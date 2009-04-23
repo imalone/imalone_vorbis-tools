@@ -35,6 +35,7 @@
 
 #ifdef _WIN32
 #define I64FORMAT "I64d"
+#define strcasecmp _stricmp
 #else
 #define I64FORMAT "lld"
 #endif
@@ -145,6 +146,7 @@ static int printlots = 0;
 static int printinfo = 1;
 static int printwarn = 1;
 static int verbose = 1;
+static int skipbase64 = 0;
 
 static int flawed;
 
@@ -207,6 +209,13 @@ static void check_xiph_comment(stream_processor *stream, int i, const char *comm
     unsigned char *val;
     int bytes;
     int remaining;
+
+    const char *tag_skip_list[] = {
+        "METADATA_BLOCK_PICTURE",
+        NULL
+    };
+    int skip_counter;
+    int skip_display;
 
     if(sep == NULL) {
         warn(_("WARNING: Comment %d in stream %d has invalid "
@@ -358,7 +367,19 @@ static void check_xiph_comment(stream_processor *stream, int i, const char *comm
 	 }
          *sep = 0;
          if(!broken) {
-           info("\t%s=%s\n", comment, decoded);
+	   skip_display = 0;
+	   for ( skip_counter=0 ; skipbase64 && tag_skip_list[skip_counter] ;
+		 skip_counter++) {
+	     if (!strcasecmp(comment,tag_skip_list[skip_counter])) {
+	       skip_display = 1;
+	       break;
+	     }
+	   }
+	   if (!skip_display) {
+	     info("\t%s=%s\n", comment, decoded);
+	   } else {
+	     info("\t*skipped:%s\n", comment);
+	   }
            free(decoded);
          }
      }
@@ -1236,7 +1257,9 @@ static void usage(void) {
              "\t-q Make less verbose. Once will remove detailed informative\n"
              "\t   messages, two will remove warnings\n"
              "\t-v Make more verbose. This may enable more detailed checks\n"
-             "\t   for some stream types.\n"));
+             "\t   for some stream types.\n"
+             "\t-s Skip base64. Do not output contents for comments expected\n"
+             "\t   to contain base64 encoded binary data.\n"));
     printf (_("\t-V Output version information and exit\n"));
 }
 
@@ -1257,7 +1280,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    while((ret = getopt(argc, argv, "hqvV")) >= 0) {
+    while((ret = getopt(argc, argv, "hqvVs")) >= 0) {
         switch(ret) {
             case 'h':
                 usage();
@@ -1270,6 +1293,9 @@ int main(int argc, char **argv) {
                 break;
             case 'q':
                 verbose--;
+                break;
+            case 's':
+                skipbase64 = 1;
                 break;
         }
     }

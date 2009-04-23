@@ -13,6 +13,8 @@ ogginfo \- gives information about Ogg files, and does extensive validity checki
 ] [
 .B -v
 ] [
+.B -s
+] [
 .B -h
 ]
 .I file1.ogg
@@ -49,6 +51,8 @@ Quiet mode. This may be specified multiple times. Doing so once will remove
 the detailed informative messages, twice will remove warnings as well.
 .IP -v
 Verbose mode. At the current time, this does not do anything.
+.IP -s
+Omit the contents of tags that are expected to contain base64 encoded binary data (currently METADATA_BLOCK_PICTURE) from the output. The tag name will still be shown.
 
 .SH AUTHORS
 .br
