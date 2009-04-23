@@ -29,6 +29,11 @@
 
 #include "vcedit.h"
 
+#ifdef WIN32                                                                   
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
+#endif
+
 
 /* getopt format struct */
 struct option long_options[] = {
@@ -42,6 +47,7 @@ struct option long_options[] = {
 	{"commentfile",1,0,'c'},
 	{"raw", 0,0,'R'},
 	{"escapes",0,0,'e'},
+	{"skipbinary",0,0,'s'},
 	{NULL,0,0,0}
 };
 
@@ -61,7 +67,14 @@ typedef struct {
 	/* comments */
 	int	commentcount;
 	char	**comments;
+
+	const char	**tag_skip_list;
 } param_t;
+
+const char *tag_skip_list_defaults[] = {
+  "METADATA_BLOCK_PICTURE=",
+  NULL
+};
 
 #define MODE_NONE  0
 #define MODE_LIST  1
@@ -70,7 +83,7 @@ typedef struct {
 
 /* prototypes */
 void usage(void);
-void print_comments(FILE *out, vorbis_comment *vc, int raw, int escapes);
+void print_comments(FILE *out, vorbis_comment *vc, int raw, int escapes, const char **tag_skip_list);
 int  add_comment(char *line, vorbis_comment *vc, int raw, int escapes);
 
 char *escape(const char *from, int fromsize);
@@ -202,7 +215,7 @@ int main(int argc, char **argv)
 
 		/* extract and display the comments */
 		vc = vcedit_comments(state);
-		print_comments(param->com, vc, param->raw, param->escapes);
+		print_comments(param->com, vc, param->raw, param->escapes, param->tag_skip_list);
 
 		/* done */
 		vcedit_clear(state);
@@ -291,12 +304,29 @@ int main(int argc, char **argv)
 
 ***********/
 
-void print_comments(FILE *out, vorbis_comment *vc, int raw, int escapes)
+void print_comments(FILE *out, vorbis_comment *vc, int raw, int escapes, const char **tag_skip_list)
 {
-	int i;
+	int i, skip_counter, max_skip;
 	char *escaped_value, *decoded_value;
+	const char *skip_tag;
+
+	for(max_skip=0; tag_skip_list && tag_skip_list[max_skip] ;
+		max_skip++) {
+		/* Establish length of this list for later use, 0
+		 * will indicate don't use the list */
+	}
 
 	for (i = 0; i < vc->comments; i++) {
+		for (skip_counter=0 ; skip_counter < max_skip ; skip_counter++) {
+			skip_tag = tag_skip_list[skip_counter];
+			if(!strncasecmp(vc->user_comments[i], skip_tag, strlen(skip_tag))) {
+				break;
+			}
+		}
+		if (skip_counter < max_skip) {
+			continue; /* Should we indicate skipped fields? */
+		}
+
 		if (escapes) {
 			escaped_value = escape(vc->user_comments[i], vc->comment_lengths[i]);
 		} else {
@@ -552,6 +582,8 @@ void usage(void)
             "                          When editing, read comments from the specified file.\n"));
   printf (_("  -R, --raw               Read and write comments in UTF-8\n"));
   printf (_("  -e, --escapes           Use \\n-style escapes to allow multiline comments.\n"));
+  printf (_("  -s, --skipbinary        Omit known base64 encoded tags \n"
+            "                          (METADATA_BLOCK_PICTURE) from output.\n"));
   printf ("\n");
 
   printf (_("  -h, --help              Display this help\n"));
@@ -636,7 +668,7 @@ void parse_options(int argc, char *argv[], param_t *param)
 
 	setlocale(LC_ALL, "");
 
-	while ((ret = getopt_long(argc, argv, "alwhqVc:t:Re",
+	while ((ret = getopt_long(argc, argv, "alwhqVc:t:Res",
 			long_options, &option_index)) != -1) {
 		switch (ret) {
 			case 0:
@@ -676,6 +708,9 @@ void parse_options(int argc, char *argv[], param_t *param)
 				param->comments = realloc(param->comments, 
 						(param->commentcount+1)*sizeof(char *));
 				param->comments[param->commentcount++] = strdup(optarg);
+				break;
+			case 's':
+				param->tag_skip_list = tag_skip_list_defaults;
 				break;
 			default:
 				usage();

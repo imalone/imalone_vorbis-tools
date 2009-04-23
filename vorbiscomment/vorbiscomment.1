@@ -11,6 +11,7 @@ vorbiscomment \- List or edit comments in Ogg Vorbis files
 .B [-l]
 .RB [ -R ]
 .RB [ -e ]
+.RB [ -s ]
 .I file.ogg
 .br
 .B vorbiscomment
@@ -58,6 +59,8 @@ Quote/unquote newlines and backslashes in the comments. This ensures every comme
 Supported escapes are c-style "\en", "\er", "\e\e" and "\e0". A backslash followed by anything else is an error.
 
 Note: currently, anything after the first "\e0" is thrown away while writing.  This is a bug -- the Vorbis format can safely store null characters, but most other tools wouldn't handle them anyway.
+.IP "-s, --skipbinary"
+Omit tags that are expected to contain base64 encoded binary data (currently METADATA_BLOCK_PICTURE) from the output.
 .IP "-V, --version"
 Display the version of vorbiscomment.
 
